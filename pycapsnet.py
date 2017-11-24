@@ -64,7 +64,6 @@ class capsnet(nn.Module):
 	  v = self.squash(v)
 	  db = input * v[:,None,:,:,None]
 	  b = b + db.sum(-2,keepdim=True)
-
 	return v
 
     def forward(self, input, target):
@@ -80,7 +79,7 @@ class capsnet(nn.Module):
 	output = v * onehot[:,:,None]
 	output = self.decoder(output.view(output.size(0),-1))
 
-        return v, output, onehot
+	return v, output, onehot
 
 class criterion(nn.Module):
     def __init__(self):
@@ -106,6 +105,7 @@ class predition(nn.Module):
 	output = torch.norm(pred, 2, -1)
 	_, output = output.data.max(1, keepdim=True)
 	acc = output.float().view_as(target).eq(target.float())
+	
 	return acc.sum()
 
 
