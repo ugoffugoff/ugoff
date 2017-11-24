@@ -31,17 +31,12 @@ class capsnet(nn.Module):
 	self.nOutput = nOutput
 
         self.conv1 = nn.Sequential(
-          nn.Conv2d(1,nInputPlane,9),
+          nn.Conv2d(3,nInputPlane,9),
           nn.ReLU(inplace=True),
+	  nn.Conv2d(nInputPlane, nCapsule * nOutputPlane, 9, 2)
         )
 
-	self.primary_capsules = nn.ModuleList(
-	  [nn.Conv2d(nInputPlane, nOutputPlane, 9, 2)
-           for _ in range(nCapsule)
-          ]
-        )
-
-	self.route_weight = nn.Parameter(torch.randn(nOutput, outputDimesion, nOutputPlane, 1152))
+	self.route_weight = nn.Parameter(torch.randn(nCapsule, nOutput, outputDimesion, nOutputPlane, 36))
 
 	self.decoder = nn.Sequential(
           nn.Linear(outputDimesion * nOutput, 512),
@@ -60,26 +55,23 @@ class capsnet(nn.Module):
 	return scale[:,:,None] * input
 
     def route(self, input):
-	b = Variable(torch.zeros(input.size(0), self.nOutput, 1152)).cuda()
+	b = Variable(torch.zeros(input.size(0), self.nCapsule, self.nOutput, 1, 36)).cuda()
 
 	for i in range(self.nIte):
           b = F.softmax(b,1)
-	  v = input * b[:,:,None,:]
-	  v = v.sum(-1)
+	  v = input * b
+	  v = v.sum(-1).sum(-3)
 	  v = self.squash(v)
-	  db = input * v[:,:,:,None]
-	  b = b + db.sum(-2)
+	  db = input * v[:,None,:,:,None]
+	  b = b + db.sum(-2,keepdim=True)
 
 	return v
 
     def forward(self, input, target):
-        x = self.conv1(input)
-	u = [capsule(x).view(x.size(0), self.nOutputPlane, -1)
-                       for capsule in self.primary_capsules]
-	u = [self.squash(block)
-                       for block in u]
-	u = torch.cat(u, dim=-1)
-	u_hat = u[:,None,None,:,:] * self.route_weight
+        u = self.conv1(input)
+	u = self.squash(u.view(u.size(0), self.nCapsule, -1))
+	u = u.view(u.size(0), self.nCapsule, 1, 1, self.nOutputPlane, 36)
+	u_hat = u * self.route_weight
 	u_hat = u_hat.sum(-2)
 
 	v = self.route(u_hat)
