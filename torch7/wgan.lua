@@ -24,7 +24,7 @@ cmd:option('-batchsize',100,'batch size')
 cmd:option('-optimization','rmsprop','optimization')
 cmd:option('-epoch',800000,'number of epoch to run')
 cmd:option('-learningrate',5e-4,'learning rate')
-cmd:option('-datapath','images/apple/','images path')
+cmd:option('-datapath','images/','images path')
 cmd:option('-saveresult',true,'save generated images')
 cmd:text()
 
